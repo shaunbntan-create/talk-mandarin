@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+/* ----------------------------------------------------------------------------
+   话伴 Huaban — "aurora glass". Off-white surfaces, near-black ink, and a soft
+   lime-green → mint → cyan → blue mesh gradient drifting behind translucent
+   glass cards. High-contrast serif (Fraunces) for display headlines, a clean
+   grotesque (Outfit) for body, Noto Sans SC for Hanzi + pinyin.
+
+   Palette sampled from the reference boards:
+     lime  #99dc0b #61d307   spring #a3f19d #7ced9c   mint #aaf0c6
+     sky   #9fd4f4 #5fc7f9   azure  #59b0e9 #32adf7   ink  #131513
+   The legacy accent tokens (cinnabar/sage/amber) are kept BY NAME so existing
+   components need no rename — cinnabar = ink-dark pill, sage = green cue,
+   amber = blue cue.
+---------------------------------------------------------------------------- */
+@theme {
+  --color-paper: oklch(0.986 0.005 155);
+  --color-paper-deep: oklch(0.955 0.008 165);
+  --color-surface: oklch(1 0 0);
+  --color-ink: oklch(0.23 0.012 155);
+  --color-muted: oklch(0.5 0.012 165);
+  --color-faint: oklch(0.64 0.01 175);
+  --color-line: oklch(0.9 0.012 175);
+  --color-line-strong: oklch(0.82 0.014 175);
+
+  /* primary "accent" = ink-dark pill (the black buttons in the reference) */
+  --color-cinnabar: oklch(0.24 0.018 155);
+  --color-cinnabar-deep: oklch(0.16 0.02 155);
+  --color-cinnabar-soft: oklch(0.93 0.06 150);
+  --color-on-cinnabar: oklch(0.99 0.008 150);
+
+  /* green family (success / "say it like this") */
+  --color-sage: oklch(0.6 0.16 148);
+  --color-sage-soft: oklch(0.93 0.07 148);
+  /* blue family (hints / attention) — reusing the "amber" token names */
+  --color-amber: oklch(0.64 0.13 240);
+  --color-amber-soft: oklch(0.93 0.05 235);
+
+  /* raw gradient stops (used by the aurora layer) */
+  --color-lime: oklch(0.86 0.2 132);
+  --color-spring: oklch(0.88 0.16 150);
+  --color-mint: oklch(0.91 0.09 168);
+  --color-sky: oklch(0.85 0.09 232);
+  --color-azure: oklch(0.74 0.13 240);
+
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-han: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", ui-sans-serif, sans-serif;
+  --font-pinyin: "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", "Tiempos Headline", Georgia, "Songti SC", serif;
+
+  --radius: 1.25rem;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- aurora mesh background ------------------------------------------------
+   A fixed, drifting lime→mint→cyan→blue field on off-white. Sits on its own
+   layer (z-index -1) so the glass cards above have real colour to refract.
+   `.paper-grain` is kept as an alias so older markup still gets the field.
+--------------------------------------------------------------------------- */
+.aurora,
+.paper-grain {
+  position: relative;
+  isolation: isolate;
+}
+.aurora::before,
+.paper-grain::before {
+  content: "";
+  position: fixed;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(38% 48% at 14% 10%, var(--color-lime), transparent 68%),
+    radial-gradient(36% 44% at 84% 6%, var(--color-mint), transparent 70%),
+    radial-gradient(48% 56% at 90% 80%, var(--color-azure), transparent 72%),
+    radial-gradient(52% 58% at 8% 90%, var(--color-spring), transparent 72%),
+    radial-gradient(64% 64% at 50% 52%, var(--color-sky), transparent 82%);
+  filter: saturate(1.08);
+  opacity: 1;
+  animation: aurora-drift 26s ease-in-out infinite alternate;
+}
+@keyframes aurora-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(2.5%, -2%, 0) scale(1.07); }
+  100% { transform: translate3d(-2.5%, 2%, 0) scale(1.05); }
+}
+
+/* ---- frosted glass --------------------------------------------------------- */
+.glass {
+  background: oklch(1 0 0 / 0.5);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  border: 1px solid oklch(1 0 0 / 0.55);
+  box-shadow:
+    0 14px 40px -18px oklch(0.45 0.06 220 / 0.4),
+    inset 0 1px 0 oklch(1 0 0 / 0.55);
+}
+.glass-strong {
+  background: oklch(1 0 0 / 0.72);
+  backdrop-filter: blur(30px) saturate(1.45);
+  -webkit-backdrop-filter: blur(30px) saturate(1.45);
+  border: 1px solid oklch(1 0 0 / 0.65);
+  box-shadow:
+    0 18px 50px -20px oklch(0.45 0.06 220 / 0.45),
+    inset 0 1px 0 oklch(1 0 0 / 0.6);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.04;
+}
+
+.font-han {
+  font-family: var(--font-han);
+}
+.pinyin {
+  font-family: var(--font-pinyin);
+  font-feature-settings: "kern" 1;
+}
+
+/* thin, calm scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 9999px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-sage);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---- wiggly text ----------------------------------------------------------
+   .wiggly      gentle continuous wobble on a whole word/element
+   .wiggly-char per-letter wave; set --i on each <span> for a staggered ripple
+--------------------------------------------------------------------------- */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-2deg) translateY(0); }
+  25% { transform: rotate(2deg) translateY(-1.5px); }
+  50% { transform: rotate(-1.5deg) translateY(0.5px); }
+  75% { transform: rotate(1.5deg) translateY(-0.5px); }
+}
+.wiggly {
+  display: inline-block;
+  animation: wiggle 2.6s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+@keyframes wiggle-char {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-0.14em) rotate(-5deg); }
+  60% { transform: translateY(0.08em) rotate(4deg); }
+}
+.wiggly-char {
+  display: inline-block;
+  white-space: pre;
+  animation: wiggle-char 1.8s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 0.06s);
+}
+
+/* roomy tap targets + iOS safe areas for mobile */
+@media (max-width: 640px) {
+  button { touch-action: manipulation; }
+}
+.safe-b { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,6 @@
+# SenseVoice speech server (CPU). Install with:
+#   pip install -r asr_server/requirements.txt
+sherpa-onnx>=1.10.0
+fastapi>=0.110
+uvicorn[standard]>=0.29
+numpy>=1.24

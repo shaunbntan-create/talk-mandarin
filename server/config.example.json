@@ -1,0 +1,12 @@
+{
+  "provider": "openai",
+  "baseUrl": "",
+  "apiKey": "",
+  "model": "",
+  "temperature": 0.6,
+  "_notes": {
+    "provider": "openai | anthropic. 'openai' covers any OpenAI-compatible endpoint (OpenAI, OpenCode Zen, OpenRouter, LM Studio, Ollama).",
+    "baseUrl": "Leave blank to use the provider default. For OpenCode Zen / OpenRouter / a local LLM, paste their base URL (ending in /v1 for OpenAI-compatible).",
+    "model": "e.g. gpt-4o-mini, claude-3-5-sonnet-latest, or your OpenCode model id."
+  }
+}

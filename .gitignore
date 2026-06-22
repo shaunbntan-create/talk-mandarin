@@ -1,0 +1,15 @@
+node_modules
+dist
+*.local
+.DS_Store
+
+# runtime secrets + caches
+server/config.json
+server/.tts-cache/
+.env
+
+# downloaded ASR model weights (auto-fetched on first run)
+asr_server/models/
+
+*.log
+.gstack/
