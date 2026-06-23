@@ -22,9 +22,6 @@ function loadConfig() {
     return { provider: "openai", baseUrl: "", apiKey: "", model: "", temperature: 0.6 };
   }
 }
-function saveConfig(cfg) {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
-}
 function publicConfig(cfg) {
   const { apiKey, ...rest } = cfg;
   return { ...rest, hasKey: Boolean(apiKey && apiKey.length) };
@@ -90,19 +87,14 @@ app.get("/api/scenarios", (_req, res) => res.json({ scenarios: SCENARIOS }));
 
 app.get("/api/config", (_req, res) => res.json(publicConfig(loadConfig())));
 
-app.post("/api/config", (req, res) => {
-  const cur = loadConfig();
-  const body = req.body || {};
-  const next = {
-    provider: body.provider ?? cur.provider,
-    baseUrl: body.baseUrl ?? cur.baseUrl,
-    model: body.model ?? cur.model,
-    temperature: body.temperature ?? cur.temperature ?? 0.6,
-    // keep existing key unless a non-empty new one is sent
-    apiKey: body.apiKey && body.apiKey.length ? body.apiKey : cur.apiKey,
-  };
-  saveConfig(next);
-  res.json(publicConfig(next));
+// The model connection is provisioned server-side (server/config.json) and the
+// UI has no provider/key picker, so nothing legitimately writes config over HTTP.
+// On a public, unauthenticated deployment this endpoint would let a stranger
+// overwrite the API key / provider, so it is locked. Edit server/config.json on
+// the host to change the model, or re-enable this behind auth if a config UI is
+// ever added.
+app.post("/api/config", (_req, res) => {
+  res.status(403).json({ error: "config_locked", message: "Model config is managed on the server." });
 });
 
 // ---------- warm-up ----------

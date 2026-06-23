@@ -1,4 +1,42 @@
-# 话伴 Huàbàn
+<p align="center">
+  <img src="docs/screenshots/hero.png" alt="话伴 Huàbàn — talk your way to fluent Mandarin" width="100%">
+</p>
+
+<h1 align="center">话伴 Huàbàn</h1>
+
+<p align="center">
+  <b>Talk your way to fluent Mandarin.</b><br>
+  A native-speaking AI partner sets a scene, speaks only Chinese, and fixes you the moment you slip into English.<br>
+  You just talk. It listens, replies out loud, and breaks down every line.
+</p>
+
+<p align="center">
+  <code>Hands-free voice immersion</code> ·
+  <code>Real-time corrections</code> ·
+  <code>Word-by-word breakdowns</code> ·
+  <code>Native text-to-speech</code>
+</p>
+
+---
+
+## What it feels like
+
+<table>
+  <tr>
+    <td width="25%" align="center"><img src="docs/screenshots/home.png" alt="Start screen" width="100%"></td>
+    <td width="25%" align="center"><img src="docs/screenshots/voice.png" alt="Hands-free listening" width="100%"></td>
+    <td width="25%" align="center"><img src="docs/screenshots/situation.png" alt="The situation card" width="100%"></td>
+    <td width="25%" align="center"><img src="docs/screenshots/breakdown.png" alt="Word-by-word breakdown" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>One tap to start</b><br><sub>Pick a scene or describe your own.</sub></td>
+    <td align="center"><b>Go hands-free</b><br><sub>Just talk. It listens and replies out loud.</sub></td>
+    <td align="center"><b>Know the scene</b><br><sub>Who you're talking to and why, on tap.</sub></td>
+    <td align="center"><b>Every line, decoded</b><br><sub>Hanzi · pinyin · meaning, word by word.</sub></td>
+  </tr>
+</table>
+
+---
 
 A local-first, **voice-based Chinese immersion tutor**. A native-speaking AI partner picks a
 scene, speaks only Mandarin, and corrects you the instant you slip into English. You answer out
