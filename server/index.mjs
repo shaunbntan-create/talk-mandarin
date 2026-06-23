@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -50,6 +51,36 @@ function parseTurn(raw) {
 
 const app = express();
 app.use(cors());
+
+// ---------- speech server proxy ----------
+// The phone uploads its mic audio same-origin to /asr, and we forward it to the
+// local SenseVoice server (asr_server/server.py on 8799) so transcription happens
+// on this machine, never on the phone. We stream the raw body straight through
+// (it's float32 PCM, not JSON), so this MUST run before express.json(). Mirrors
+// the dev-only /asr rewrite in vite.config.ts (strip the /asr prefix).
+const ASR_TARGET = process.env.ASR_TARGET || "http://127.0.0.1:8799";
+app.use("/asr", (req, res) => {
+  const target = new URL(ASR_TARGET);
+  const targetPath = req.originalUrl.replace(/^\/asr/, "") || "/";
+  const proxyReq = http.request(
+    {
+      hostname: target.hostname,
+      port: target.port,
+      path: targetPath,
+      method: req.method,
+      headers: { ...req.headers, host: target.host },
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+      proxyRes.pipe(res);
+    }
+  );
+  proxyReq.on("error", (e) => {
+    if (!res.headersSent) res.status(502).json({ error: "asr_unreachable", message: e.message });
+  });
+  req.pipe(proxyReq);
+});
+
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
@@ -143,8 +174,23 @@ app.get("/api/tts", async (req, res) => {
 // ---------- serve built frontend in production ----------
 const dist = path.join(__dirname, "..", "dist");
 if (fs.existsSync(dist)) {
-  app.use(express.static(dist));
-  app.get("*", (_req, res) => res.sendFile(path.join(dist, "index.html")));
+  // Hashed assets (js/css/fonts) can cache forever; index.html must always be
+  // revalidated so phones pick up new builds instead of pinning old asset hashes.
+  app.use(
+    express.static(dist, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith("index.html")) {
+          res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    })
+  );
+  app.get("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, must-revalidate");
+    res.sendFile(path.join(dist, "index.html"));
+  });
 }
 
 app.listen(PORT, () => {

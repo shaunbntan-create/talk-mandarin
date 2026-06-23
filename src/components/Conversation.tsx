@@ -93,7 +93,7 @@ function IconBtn({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="grid h-9 w-9 place-items-center rounded-full text-muted transition hover:bg-paper-deep hover:text-ink"
+      className="grid h-9 w-9 place-items-center rounded-full text-muted transition hover:bg-paper-deep hover:text-ink active:scale-95"
     >
       {children}
     </button>

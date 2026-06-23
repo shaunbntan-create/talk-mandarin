@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Microphone, Sparkle } from "@phosphor-icons/react";
+import { X, Microphone, Sparkle, CaretDown, CaretUp } from "@phosphor-icons/react";
 import { useStore, spokenLine } from "../lib/store";
 import { MicRecorder, playTTS, trimSilence } from "../lib/audio";
 import { transcribeRemote, remoteAsrHealthy } from "../lib/asr";
-import { loadWhisper, transcribe as whisperTranscribe } from "../lib/whisper";
 import { ttsUrl } from "../lib/api";
 import { Breakdown } from "./Breakdown";
 import { SpeakButton } from "./ui";
@@ -52,8 +51,9 @@ export function VoiceMode() {
   const [phase, setPhase] = useState<Phase>("starting");
   const [level, setLevel] = useState(0);
   const [heard, setHeard] = useState("");
-  const [engine, setEngine] = useState<"nvidia" | "browser">("browser");
+  const [serverUp, setServerUp] = useState(true);
   const [typed, setTyped] = useState("");
+  const [sitOpen, setSitOpen] = useState(false); // expand the situation card to read the full setup
 
   // the in-overlay "make a new situation" sheet
   const [making, setMaking] = useState(false);
@@ -103,7 +103,7 @@ export function VoiceMode() {
         const SIL_MS = 1000;        // a pause this long ends your turn (room to think)
         const MIN_SPEECH_MS = 350;  // ignore clicks/coughs shorter than this
         const MAX_MS = 15000;       // hard cap on one turn
-        const NO_SPEECH_MS = 12000; // total silence: stop and re-listen, don't hang
+        const NO_SPEECH_MS = 3000;  // if you don't start talking within 3s, cancel and re-open the mic
         const t0 = performance.now();
 
         const finish = async () => {
@@ -164,13 +164,10 @@ export function VoiceMode() {
     }
 
     (async () => {
-      // pick the speech engine
-      const useNvidia = await remoteAsrHealthy();
-      setEngine(useNvidia ? "nvidia" : "browser");
-      console.debug("[huaban] hands-free ASR:", useNvidia ? "SenseVoice (server)" : "browser Whisper");
-      if (!useNvidia) {
-        try { await loadWhisper(useStore.getState().prefs.sttModel); } catch { /* ignore */ }
-      }
+      // Speech is ALWAYS transcribed on the Zo server, never on this phone. We just
+      // probe it so we can show whether it's reachable — there is no on-device
+      // fallback by design (the user explicitly does not want the phone doing STT).
+      setServerUp(await remoteAsrHealthy());
 
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
       let lastSpokenId: string | null = null;
@@ -204,13 +201,14 @@ export function VoiceMode() {
         setPhase("transcribing");
         let text = "";
         try {
-          // ALWAYS auto-detect: that is exactly what lets one utterance mix Chinese
-          // and English. The server ignores the lang hint, but we pass "auto" so the
-          // browser fallback never pins a single language either.
-          text = useNvidia
-            ? await transcribeRemote(audio, "auto")
-            : await whisperTranscribe(audio, st.prefs.sttLanguage);
-        } catch { text = ""; }
+          // ALWAYS auto-detect on the Zo server: that is exactly what lets one
+          // utterance mix Chinese and English (the server ignores the lang hint).
+          text = await transcribeRemote(audio, "auto");
+          setServerUp(true);
+        } catch {
+          setServerUp(false);
+          text = "";
+        }
         text = (text || "").trim();
         if (!running.current) break;
         if (!text) continue;
@@ -238,22 +236,59 @@ export function VoiceMode() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="aurora fixed inset-0 z-[60] flex flex-col items-center justify-between px-6 py-8 safe-b"
+        // position is forced inline: the `.aurora` class sets position:relative, and
+        // in Tailwind v4 that plain rule beats the layered `fixed` utility, which
+        // would otherwise let the overlay flow below the live conversation (the
+        // "everything crammed at the bottom" bug).
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 60,
+          paddingTop: "max(0.75rem, calc(env(safe-area-inset-top, 0px) + 0.5rem))",
+        }}
+        className="aurora flex flex-col items-center overflow-hidden px-4 pb-3 safe-b sm:px-6 sm:pb-6"
       >
         {/* ---- top bar: the active situation + controls ---- */}
-        <div className="flex w-full max-w-xl items-start justify-between gap-3">
-          <div className="glass min-w-0 flex-1 rounded-2xl px-4 py-2.5 text-left">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/45">The situation</p>
+        <div className="flex w-full max-w-xl shrink-0 items-start justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => scene && setSitOpen((v) => !v)}
+            aria-expanded={sitOpen}
+            className="glass min-w-0 flex-1 rounded-2xl px-4 py-2.5 text-left transition active:scale-[0.99]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/45">The situation</p>
+              {scene &&
+                (sitOpen ? (
+                  <CaretUp size={13} weight="bold" className="shrink-0 text-ink/40" />
+                ) : (
+                  <CaretDown size={13} weight="bold" className="shrink-0 text-ink/40" />
+                ))}
+            </div>
             {scene ? (
-              <p className="mt-0.5 truncate text-sm text-ink">
-                <span className="mr-1">{scene.emoji}</span>
-                <span className="font-medium">{scene.title_en}</span>
-                <span className="text-ink/55"> · you're talking to {scene.role}</span>
-              </p>
+              <>
+                <p className={`mt-0.5 text-sm text-ink ${sitOpen ? "" : "truncate"}`}>
+                  <span className="mr-1">{scene.emoji}</span>
+                  <span className="font-medium">{scene.title_en}</span>
+                  <span className="text-ink/55"> · you're talking to {scene.role}</span>
+                </p>
+                <AnimatePresence initial={false}>
+                  {sitOpen && scene.setup_en && (
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-1.5 max-h-[40vh] overflow-y-auto text-sm leading-relaxed text-ink/70"
+                    >
+                      {scene.setup_en}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </>
             ) : (
               <p className="mt-0.5 text-sm text-ink/55">Setting the scene…</p>
             )}
-          </div>
+          </button>
           <div className="flex shrink-0 items-center gap-2">
             <button
               onClick={() => setMaking((v) => !v)}
@@ -279,20 +314,20 @@ export function VoiceMode() {
               initial={{ opacity: 0, y: -8, height: 0 }}
               animate={{ opacity: 1, y: 0, height: "auto" }}
               exit={{ opacity: 0, y: -8, height: 0 }}
-              className="w-full max-w-xl overflow-hidden"
+              className="w-full max-w-xl shrink-0 overflow-hidden"
             >
               <div className="glass-strong mt-3 space-y-3 rounded-3xl p-4 text-left">
                 <input
                   value={situation}
                   onChange={(e) => setSituation(e.target.value)}
-                  placeholder="The situation — e.g. ordering street food in Chengdu"
+                  placeholder="The situation, e.g. ordering street food in Chengdu"
                   className="font-sans w-full rounded-xl border border-white/50 bg-white/45 px-3.5 py-2.5 text-sm text-ink outline-none placeholder:text-ink/35 focus:border-sage"
                 />
                 <input
                   value={persona}
                   onChange={(e) => setPersona(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && startCustomSituation()}
-                  placeholder="Who should I be? — e.g. a cheerful stall vendor"
+                  placeholder="Who should I be? e.g. a cheerful stall vendor"
                   className="font-sans w-full rounded-xl border border-white/50 bg-white/45 px-3.5 py-2.5 text-sm text-ink outline-none placeholder:text-ink/35 focus:border-sage"
                 />
                 <button
@@ -308,17 +343,16 @@ export function VoiceMode() {
           )}
         </AnimatePresence>
 
-        {/* the orb */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-10">
-          <div className="relative grid place-items-center">
+        {/* center: the orb, the status, and the tutor's line — one calm group, no dead gap */}
+        <div className="flex min-h-0 w-full max-w-xl flex-1 flex-col items-center justify-center gap-4 sm:gap-6">
+          <div className="relative grid shrink-0 place-items-center">
             <motion.div
-              className="absolute rounded-full bg-ink/10"
-              style={{ width: 220, height: 220 }}
+              className="absolute h-36 w-36 rounded-full bg-ink/10 sm:h-52 sm:w-52"
               animate={{ scale: active ? scale : 1, opacity: active ? 0.6 : 0.25 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             />
             <motion.div
-              className="grid h-40 w-40 place-items-center rounded-full bg-ink text-on-cinnabar"
+              className="grid h-24 w-24 place-items-center rounded-full bg-ink text-on-cinnabar sm:h-36 sm:w-36"
               animate={
                 phase === "thinking"
                   ? { scale: [1, 1.06, 1] }
@@ -332,61 +366,61 @@ export function VoiceMode() {
                   : { type: "spring", stiffness: 300, damping: 20 }
               }
             >
-              <Microphone size={48} weight="fill" />
+              <Microphone size={42} weight="fill" />
             </motion.div>
           </div>
 
-          <div className="text-center">
-            <p className="font-display text-3xl text-ink">
+          <div className="mt-3 shrink-0 text-center sm:mt-5">
+            <p className="font-display text-2xl text-ink sm:text-3xl">
               {(phase === "thinking" || phase === "starting") && !scene ? "Setting the scene…" : LABEL[phase]}
             </p>
             {heard && phase !== "listening" && (
-              <p className="mt-3 max-w-md font-han text-base text-ink/60">“{heard}”</p>
+              <p className="mt-2 max-w-md font-han text-base text-ink/60">“{heard}”</p>
             )}
-            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-ink/35">
-              {engine === "nvidia" ? "SenseVoice · 中文 + English" : "browser ears"}
-            </p>
+            {!serverUp && (
+              <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-ink/35">
+                speech server offline, retrying
+              </p>
+            )}
           </div>
-        </div>
 
-        {/* what the tutor just said — Hanzi first, reveal the rest only if you ask */}
-        <div className="mb-2 w-full max-w-xl">
+          {/* what the tutor just said — sits right under the status, so nothing to scroll past */}
           {det && <DetailCard key={det.hanzi} det={det} autoReveal={useStore.getState().prefs.autoReveal} />}
 
           {phase === "error" && (
-            <p className="mt-2 text-center text-sm text-ink">
+            <p className="shrink-0 text-center text-sm text-ink">
               Couldn’t reach the microphone. Allow mic access, then reopen voice mode.
             </p>
           )}
-
-          {/* type instead of (or as well as) talking — for when speech misses */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const t = typed.trim();
-              if (!t) return;
-              setTyped("");
-              setHeard(t);
-              try { abort.current(); } catch { /* stop listening */ }
-              useStore.getState().sendText(t);
-            }}
-            className="mt-3 flex items-center gap-2"
-          >
-            <input
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              placeholder="…or type your answer (中文 / English)"
-              className="glass font-han min-w-0 flex-1 rounded-full px-4 py-2.5 text-base text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink/40"
-            />
-            <button
-              type="submit"
-              disabled={!typed.trim()}
-              className="shrink-0 rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-on-cinnabar disabled:opacity-40"
-            >
-              Send
-            </button>
-          </form>
         </div>
+
+        {/* type instead of (or as well as) talking — pinned at the bottom, always in reach */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const t = typed.trim();
+            if (!t) return;
+            setTyped("");
+            setHeard(t);
+            try { abort.current(); } catch { /* stop listening */ }
+            useStore.getState().sendText(t);
+          }}
+          className="mt-3 flex w-full max-w-xl shrink-0 items-center gap-2"
+        >
+          <input
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder="…or type your answer (中文 / English)"
+            className="glass font-han min-w-0 flex-1 rounded-full px-4 py-2.5 text-base text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink/40"
+          />
+          <button
+            type="submit"
+            disabled={!typed.trim()}
+            className="shrink-0 rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-on-cinnabar transition active:scale-[0.97] disabled:opacity-40"
+          >
+            Send
+          </button>
+        </form>
       </motion.div>
     </AnimatePresence>
   );
@@ -405,8 +439,21 @@ function DetailCard({
   const [table, setTable] = useState(false);
   const hasGloss = Boolean(det.pinyin || det.english);
 
+  // Hands-free reveal: when you open pinyin/English or the breakdown, the card
+  // brings it into view itself. You're not holding the phone, so it does the
+  // scrolling for you. Skipped on first mount so the line starts at the top.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    const el = cardRef.current;
+    if (!el) return;
+    const t = setTimeout(() => el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }), 320);
+    return () => clearTimeout(t);
+  }, [gloss, table]);
+
   return (
-    <div className="glass max-h-[46vh] overflow-y-auto rounded-3xl p-4 text-left">
+    <div ref={cardRef} className="glass w-full max-h-[34vh] overflow-y-auto rounded-3xl p-4 text-left sm:max-h-[44vh]">
       {det.label && (
         <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-faint">{det.label}</p>
       )}

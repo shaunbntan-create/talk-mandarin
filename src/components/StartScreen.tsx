@@ -150,10 +150,6 @@ export function StartScreen() {
         </AnimatePresence>
 
       </main>
-
-      <footer className="px-6 py-5 text-center text-xs text-faint">
-        Local-first · your key and audio stay on your machine · speech recognised offline
-      </footer>
     </div>
   );
 }

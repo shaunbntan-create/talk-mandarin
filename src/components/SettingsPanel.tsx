@@ -32,7 +32,7 @@ export function SettingsPanel() {
           >
             <header className="flex items-center justify-between border-b border-line px-5 py-4">
               <h2 className="text-base font-semibold text-ink">Settings</h2>
-              <button onClick={closeSettings} aria-label="close" className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-paper-deep">
+              <button onClick={closeSettings} aria-label="close" className="grid h-9 w-9 place-items-center rounded-full text-muted transition hover:bg-paper-deep hover:text-ink active:scale-95">
                 <X size={18} />
               </button>
             </header>
@@ -101,10 +101,10 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className="flex w-full items-center justify-between py-1.5 text-left"
+      className="flex w-full items-center justify-between gap-3 py-1.5 text-left"
     >
-      <span className="text-sm font-medium text-ink/80">{label}</span>
-      <span className={clsx("relative h-6 w-11 rounded-full transition", value ? "bg-cinnabar" : "bg-line-strong")}>
+      <span className="min-w-0 text-sm font-medium text-ink/80">{label}</span>
+      <span className={clsx("relative h-6 w-11 shrink-0 rounded-full transition", value ? "bg-cinnabar" : "bg-line-strong")}>
         <motion.span
           className="absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow"
           animate={{ left: value ? 22 : 2 }}

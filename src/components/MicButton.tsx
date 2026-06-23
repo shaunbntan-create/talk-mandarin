@@ -80,7 +80,7 @@ export function MicButton({
       text = (text || "").trim();
       if (!text) {
         // never fail silently — that reads as "the button is broken"
-        setErr("Didn't catch that — try again, a little louder.");
+        setErr("Didn't catch that. Try again, a little louder.");
         return;
       }
       setErr(null);

@@ -9,7 +9,7 @@ export function UserBubble({ text }: { text: string }) {
       transition={{ type: "spring", stiffness: 140, damping: 18 }}
       className="ml-auto max-w-[80%]"
     >
-      <div className="rounded-3xl rounded-tr-lg bg-ink px-4 py-3 text-paper">
+      <div className="rounded-3xl rounded-tr-lg bg-ink px-4 py-3 text-paper shadow-lg shadow-ink/10">
         <p className="font-han text-lg leading-relaxed">{text}</p>
       </div>
     </motion.div>

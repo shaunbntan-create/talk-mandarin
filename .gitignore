@@ -10,6 +10,8 @@ server/.tts-cache/
 
 # downloaded ASR model weights (auto-fetched on first run)
 asr_server/models/
+# local python virtualenv for the ASR server
+asr_server/.venv/
 
 *.log
 .gstack/
