@@ -1,7 +1,7 @@
 {
   "name": "huaban",
   "private": true,
-  "version": "0.1.0",
+  "version": "2.6.7",
   "type": "module",
   "description": "话伴 Huaban - a local-first, voice-based Chinese immersion tutor",
   "scripts": {
